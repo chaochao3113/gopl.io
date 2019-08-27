@@ -1,6 +1,9 @@
 package tempconv
 
-import "fmt"
+import (
+	"flag"
+	"fmt"
+)
 
 type Celsius float64
 
@@ -25,7 +28,7 @@ func FToC(f Fahrenheit) Celsius {
 }
 
 func (c *Celsius) String() string {
-	return fmt.Sprintf("%g°C", c)
+	return fmt.Sprintf("%g°C", *c)
 }
 
 func (f *celsiusFlag) Set(s string) error {
@@ -41,5 +44,10 @@ func (f *celsiusFlag) Set(s string) error {
 		return nil
 	}
 	return fmt.Errorf("invalid temperature %q", s)
+}
 
+func CelsiusFlag(name string, value Celsius, usage string) *Celsius {
+	f := celsiusFlag{value}
+	flag.CommandLine.Var(&f, name, usage)
+	return &f.Celsius
 }
