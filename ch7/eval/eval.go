@@ -3,12 +3,16 @@ package eval
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // Expr: 算术表达式
 type Expr interface {
 	// Eval 返回表达式在env上下文下的值
 	Eval(env Env) float64
+
+	// Check 方法报告表达式中的错误,并把表达式中的变量加入Vars中
+	Check(vars map[Var]bool) error
 }
 
 // Var 表示一个变量, 比如 x
@@ -80,3 +84,42 @@ func (c call) Eval(env Env) float64 {
 	}
 	panic(fmt.Sprintf("unsupported function call: %s", c.fn))
 }
+
+func (v Var) Check(vars map[Var]bool) error {
+	vars[v] = true
+	return nil
+}
+
+func (literal) Check(vars map[Var]bool) error {
+	return nil
+}
+
+func (u unary) Check(vars map[Var]bool) error {
+	if !strings.ContainsRune("+-", u.op) {
+		return fmt.Errorf("unexpected unary op %q", u.op)
+	}
+	return u.x.Check(vars)
+}
+
+func (b binary) Check(vars map[Var]bool) error {
+	if !strings.ContainsRune("+-*/", b.op) {
+		return fmt.Errorf("unexpected binary op %q", b.op)
+	}
+	if err := b.x.Check(vars); err != nil {
+		return err
+	}
+	return b.y.Check(vars)
+}
+
+func (c call) Check(vars map[Var]bool) error {
+	arity, ok := numParams[c.fn]
+	if !ok {
+		return fmt.Errorf("unknow function %q", c.fn)
+	}
+	if len(c.args) != arity {
+		return fmt.Errorf("call to %s has %d args, want %d", c.fn, len(c.args), arity)
+	}
+	return nil
+}
+
+var numParams = map[string]int{"pow":2, "sin":1, "sqrt":1}
